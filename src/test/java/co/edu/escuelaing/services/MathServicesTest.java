@@ -20,4 +20,11 @@ class MathServicesTest {
     void squaresZero() {
         assertEquals(0, MathServices.square(0));
     }
+
+    @Test
+    void squaresJsonRequest() {
+        SquareResponse response = MathServices.squareJson(new SquareRequest(14));
+        assertEquals(14, response.getValue());
+        assertEquals(196, response.getSquare());
+    }
 }

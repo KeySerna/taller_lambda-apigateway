@@ -13,6 +13,8 @@ GET https://<api-id>.execute-api.<region>.amazonaws.com/Beta?value=14   ->   196
 ```
 pom.xml
 src/main/java/co/edu/escuelaing/services/MathServices.java      # el servicio
+src/main/java/co/edu/escuelaing/services/SquareRequest.java     # POJO de entrada
+src/main/java/co/edu/escuelaing/services/SquareResponse.java    # POJO de salida
 src/test/java/co/edu/escuelaing/services/MathServicesTest.java  # pruebas unitarias
 ```
 
@@ -184,3 +186,50 @@ los tipos de entrada y salida pueden ser:
 
 Las plantillas de mapeo permiten transformar el mensaje que se envía a la función y el que
 esta devuelve.
+
+### Ejemplo con POJOs
+
+`MathServices.squareJson` recibe y devuelve objetos propios en lugar de un número suelto:
+
+```java
+public static SquareResponse squareJson(SquareRequest request) {
+    Integer value = request.getValue();
+    return new SquareResponse(value, square(value));
+}
+```
+
+`SquareRequest` tiene el campo `value` y `SquareResponse` los campos `value` y `square`. Ambas
+clases necesitan un constructor público sin argumentos y getters/setters, porque Lambda
+los usa para convertir el JSON en objeto y el objeto en JSON.
+
+**Lambda**
+
+1. Recompila con `mvn package`.
+2. Crea una nueva función `squareJson` (mismo runtime y rol `LabRole`) y sube el mismo `.jar`.
+3. **Handler:** `co.edu.escuelaing.services.MathServices::squareJson`
+4. Crea un evento de prueba con este JSON:
+   ```json
+   {"value": 5}
+   ```
+   Respuesta esperada:
+   ```json
+   {"value": 5, "square": 25}
+   ```
+
+**API Gateway**
+
+1. En la API `mathServices`, selecciona `/` y haz clic en **Create resource**, con nombre `json`.
+2. Con `/json` seleccionado, crea un método `GET` → **Lambda function** → `squareJson`
+   (sin proxy integration).
+3. En **Method request** agrega el query string `value`.
+4. En **Integration request** mapea `value` a `method.request.querystring.value` y agrega una
+   plantilla `application/json` que arme un objeto JSON en vez de pasar un número:
+   ```
+   {"value": $input.params("value")}
+   ```
+5. Prueba con `value=14`. Respuesta esperada: `{"value":14,"square":196}`.
+6. **Deploy API** al stage `Beta` y llama:
+   ```bash
+   curl "https://<api-id>.execute-api.us-east-1.amazonaws.com/Beta/json?value=14"
+   # {"value":14,"square":196}
+   ```
